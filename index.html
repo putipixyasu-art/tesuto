@@ -213,7 +213,7 @@ html,body{height:100%;margin:0;overflow:hidden;font-family:-apple-system,BlinkMa
 .chk label span{pointer-events:none}
 .mapwrap{flex:1;position:relative;background:#ddd}
 #map{position:absolute;inset:0;touch-action:none}
-.tools{position:absolute;top:calc(env(safe-area-inset-top,0px) + 160px);right:10px;left:auto;transform:none;background:#fff;padding:6px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:5px;z-index:500;max-height:calc(100vh - 180px);overflow-y:auto}
+.tools{position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);left:50%;transform:translateX(-50%);background:#fff;padding:6px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.25);display:flex;flex-direction:row;gap:5px;z-index:500;max-width:calc(100vw - 16px);overflow-x:auto}
 .tools button{height:36px;min-width:56px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:8px;font-size:10.5px;white-space:nowrap;padding:0 6px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:.12s}
 .tools button.on{background:#2563eb;color:#fff;border-color:#1e40af}.tools button:active{transform:scale(.96);background:#e5e7eb}
 .fab{position:absolute;top:calc(env(safe-area-inset-top,0px) + 10px);left:10px;width:40px;height:40px;background:#1e3a8a;color:#fff;border:none;border-radius:6px;font-size:18px;z-index:700}
@@ -291,8 +291,8 @@ return String(str||'').replace(/[&<>"']/g, s => ({
 }[s]));
 }
 const show=t=>{hint.textContent=t;hint.classList.add('show');setTimeout(()=>hint.classList.remove('show'),1200)};
-$('close').onclick=()=>{sb.classList.add('hidden');setTimeout(()=>map.invalidateSize(),200)};
-$('open').onclick=()=>{sb.classList.remove('hidden');setTimeout(()=>map.invalidateSize(),200)};
+$('close').onclick=()=>{sb.classList.add('hidden');document.querySelector('.tools').style.display='flex';setTimeout(()=>map.invalidateSize(),200)};
+$('open').onclick=()=>{sb.classList.remove('hidden');document.querySelector('.tools').style.display='none';setTimeout(()=>map.invalidateSize(),200)};
 const map=L.map('map',{zoomControl:false}).setView([38.2686,140.8722],16);
 map.doubleClickZoom.disable();
 L.control.zoom({position:'topright'}).addTo(map);
@@ -305,7 +305,7 @@ const baseMaps = {"地図": gsi,"航空写真": photo,"OSM": osm};
 L.control.layers(baseMaps, null, {position:'topright'}).addTo(map);
 let errorCount=0;
 osm.on('tileerror',()=>{ errorCount++; if(errorCount>3){ map.removeLayer(osm); gsi.addTo(map); show('OSM不調→地理院に切替'); }});
-setTimeout(()=>map.invalidateSize(),500);
+setTimeout(()=>map.invalidateSize(),500);document.querySelector('.tools').style.display = sb.classList.contains('hidden') ? 'flex' : 'none';
 const layer=L.layerGroup().addTo(map);
 let pressTimer=null;
 map.on('contextmenu', e=>{const target = e.originalEvent.target;if(target && target.classList.contains('comment-text')){target.contentEditable='true';target.focus();show('編集モード');}});
@@ -363,5 +363,5 @@ $('tantoEditBtn').onclick=()=>{renderTantoList();$('tantoPanel').style.display='
 $('tantoClose').onclick=()=>{$('tantoPanel').style.display='none'};
 $('tantoAdd').onclick=()=>{const v=$('tantoNew').value.trim();if(!v)return;const l=getTantoList();if(l.length>50){alert('登録上限です');return}if(!l.includes(v)){l.push(v);saveTantoList(l);renderTantoList();refreshTanto();$('tantoNew').value='';show('追加しました');}};
 $('tantoNew').onkeydown=e=>{if(e.key==='Enter'){$('tantoAdd').click()}};
-setTimeout(()=>map.invalidateSize(),500);
+setTimeout(()=>map.invalidateSize(),500);document.querySelector('.tools').style.display = sb.classList.contains('hidden') ? 'flex' : 'none';
 </script></body></html>
