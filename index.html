@@ -191,14 +191,14 @@
 })();</script>
 <script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>配線エディタ v27</title>
-<style>body{margin:0;height:100vh;display:flex;flex-direction:column;font-family:sans-serif;background:#f1f5f9}header{display:flex;gap:6px;padding:8px;background:#0f172a;color:#fff;align-items:center;flex-wrap:wrap}button{background:#1e293b;color:#e2e8f0;border:1px solid #334155;padding:6px 10px;border-radius:6px;cursor:pointer}button.active{background:#0ea5e9}canvas{flex:1;background:#cbd5e1;cursor:default;filter:grayscale(1)}</style></head>
+<title>配線エディタ v44</title>
+<style>body{margin:0;height:100vh;display:flex;flex-direction:column;font-family:sans-serif;background:#f1f5f9}header{display:flex;gap:6px;padding:8px;background:#0f172a;color:#fff;align-items:center;flex-wrap:wrap}button{background:#1e293b;color:#e2e8f0;border:1px solid #334155;padding:6px 10px;border-radius:6px;cursor:pointer}button.active{background:#0ea5e9}canvas{flex:1;background:#cbd5e1;cursor:default;filter:none}</style></head>
 <body>
 <header>
 <strong>配線</strong>
 <button id="load">画像</button>
 <button id="white">白消し</button>
-<button id="wire">配線</button>
+<button id="wire">配線</button><select id="jump" title="跨ぎ"><option value="gap" selected>ギャップ(JIS)</option><option value="arc">半円</option><option value="none">なし</option></select>
 <select id="wsize"><option value="2">細</option><option value="3" selected>普通</option><option value="5">太</option></select>
 <select id="cnum"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option><option>18</option><option>19</option><option>20</option><option>21</option><option>22</option><option>23</option><option>24</option><option>25</option><option>26</option><option>27</option><option>28</option><option>29</option><option>30</option></select>
 <button id="c100">100V○</button>
@@ -246,16 +246,52 @@ function setActive(id){['load','white','wire','c100','c200','joint','undo','redo
 function resize(){cv.width=innerWidth;cv.height=innerHeight-40;draw()}addEventListener('resize',resize);
 function toWorld(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left-px)/scale,y:(e.clientY-r.top-py)/scale}}
 function save(){hist=hist.slice(0,hi+1);hist.push(JSON.stringify({w:wires,c:circuits,b:bg.toDataURL(),wht:wc.toDataURL()}));hi=hist.length-1}
-function load(s){try{const o=JSON.parse(s);wires=o.w;circuits=o.c;const bi=new Image();bi.onload=()=>{bgc.clearRect(0,0,W,H);bgc.drawImage(bi,0,0);draw()};bi.src=o.b;const wi=new Image();wi.onload=()=>{wcc.clearRect(0,0,W,H);wcc.drawImage(wi,0,0);draw()};wi.src=o.wht}
+function load(s){const o=JSON.parse(s);wires=o.w;circuits=o.c;const bi=new Image();bi.onload=()=>{bgc.clearRect(0,0,W,H);bgc.drawImage(bi,0,0);draw()};bi.src=o.b;const wi=new Image();wi.onload=()=>{wcc.clearRect(0,0,W,H);wcc.drawImage(wi,0,0);draw()};wi.src=o.wht}
 function snap(x,y){for(const c of circuits)if(Math.hypot(x-c.x,y-c.y)<28)return{x:c.x,y:c.y};return{x,y}}
-function draw(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.setTransform(scale,0,0,scale,px,py);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.drawImage(bg,0,0);ctx.drawImage(wc,0,0);ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#000';wires.forEach(w=>{if(w.p.length<2)return;ctx.lineWidth=w.w;ctx.beginPath();ctx.moveTo(w.p[0].x,w.p[0].y);w.p.slice(1).forEach(pt=>ctx.lineTo(pt.x,pt.y));ctx.stroke()});if(cur){ctx.strokeStyle='#0ea5e9';ctx.setLineDash([6,6]);ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cur.p[0].x,cur.p[0].y);cur.p.slice(1).forEach(pt=>ctx.lineTo(pt.x,pt.y));ctx.stroke();ctx.setLineDash([])}circuits.forEach(c=>{ctx.save();ctx.translate(c.x,c.y);if(c===sel){ctx.shadowColor='#0ea5e9';ctx.shadowBlur=8}if(c.t==='joint'){const s=c.s*2;ctx.drawImage(jointImg,-s/2,-s/2,s,s)}else{ctx.fillStyle='#fff';ctx.strokeStyle=c===sel?'#0ea5e9':'#000';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,c.s,0,7);ctx.fill();ctx.stroke();if(c.t==='200V'){ctx.beginPath();ctx.arc(0,0,c.s*0.68,0,7);ctx.stroke()}ctx.fillStyle='#000';ctx.font=`bold ${c.s*0.8}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(c.n,0,1)}ctx.restore()});ctx.restore()}
+function segIntersect(x1,y1,x2,y2,x3,y3,x4,y4){const d=(y4-y3)*(x2-x1)-(x4-x3)*(y2-y1);if(Math.abs(d)<0.001)return null;const ua=((x4-x3)*(y1-y3)-(y4-y3)*(x1-x3))/d;const ub=((x2-x1)*(y1-y3)-(y2-y1)*(x1-x3))/d;if(ua<0||ua>1||ub<0||ub>1)return null;return{x:x1+ua*(x2-x1),y:y1+ua*(y2-y1)}}function draw(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.setTransform(scale,0,0,scale,px,py);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.drawImage(bg,0,0);ctx.drawImage(wc,0,0);ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#000';
+const jump=document.getElementById('jump').value;
+wires.forEach((w,wi)=>{
+  if(w.p.length<2)return;
+  ctx.lineWidth=w.w;
+  for(let i=0;i<w.p.length-1;i++){
+    const a=w.p[i], b=w.p[i+1];
+    const dx=b.x-a.x, dy=b.y-a.y, len=Math.hypot(dx,dy);
+    if(len<1)continue;
+    const ux=dx/len, uy=dy/len, ang=Math.atan2(dy,dx);
+    const hits=[];
+    for(let wj=0;wj<wires.length;wj++){if(wj===wi)continue; const pw=wires[wj]; for(let k=0;k<pw.p.length-1;k++){const ip=segIntersect(a.x,a.y,b.x,b.y,pw.p[k].x,pw.p[k].y,pw.p[k+1].x,pw.p[k+1].y); if(ip){const d=Math.hypot(ip.x-a.x,ip.y-a.y); if(d>8 && d<len-8) hits.push({ip,d,wj});}}}
+    hits.sort((x,y)=>x.d-y.d);
+    let cx=a.x, cy=a.y;
+    if(jump==='none' || hits.length===0){
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); continue;
+    }
+    hits.forEach(h=>{
+      const isUpper = h.wj<wi; // earlier wire is under, later is over? Actually wi current, wj other. If wj<wi, other is lower, current is upper.
+      const px1=h.ip.x-ux*8, py1=h.ip.y-uy*8;
+      const px2=h.ip.x+ux*8, py2=h.ip.y+uy*8;
+      if(jump==='gap'){
+        if(h.wj>wi){ // other is upper, current is lower -> cut
+          ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(px1,py1); ctx.stroke();
+          cx=px2; cy=py2;
+        }
+      }else if(jump==='arc'){
+        if(h.wj<wi){ // other is lower, current is upper -> arc
+          ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(px1,py1); ctx.stroke();
+          ctx.beginPath(); ctx.arc(h.ip.x,h.ip.y,8,ang,ang+Math.PI,true); ctx.stroke();
+          cx=px2; cy=py2;
+        }
+      }
+    });
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(b.x,b.y); ctx.stroke();
+  }
+});if(cur){ctx.strokeStyle='#0ea5e9';ctx.setLineDash([6,6]);ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cur.p[0].x,cur.p[0].y);cur.p.slice(1).forEach(pt=>ctx.lineTo(pt.x,pt.y));ctx.stroke();ctx.setLineDash([])}circuits.forEach(c=>{ctx.save();ctx.translate(c.x,c.y);if(c===sel){ctx.shadowColor='#0ea5e9';ctx.shadowBlur=8}if(c.t==='joint'){const s=c.s*2;ctx.drawImage(jointImg,-s/2,-s/2,s,s)}else{ctx.fillStyle='#fff';ctx.strokeStyle=c===sel?'#0ea5e9':'#000';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,c.s,0,7);ctx.fill();ctx.stroke();if(c.t==='200V'){ctx.beginPath();ctx.arc(0,0,c.s*0.68,0,7);ctx.stroke()}ctx.fillStyle='#000';ctx.font=`bold ${c.s*0.8}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(c.n,0,1)}ctx.restore()});ctx.restore()}
 function hit(x,y){for(let i=circuits.length-1;i>=0;i--){const c=circuits[i];if(Math.hypot(x-c.x,y-c.y)<c.s+6)return c}return null}
 cv.onmousedown=e=>{const w=toWorld(e);if(e.shiftKey||mode==='pan'){drag='pan';last={x:e.clientX,y:e.clientY};return}const h=hit(w.x,w.y);if(h){sel=h;drag=h;last={x:e.clientX,y:e.clientY};draw();return}sel=null;if(mode==='white'){wcc.beginPath();wcc.moveTo(w.x,w.y);drag='white'}if(mode==='wire'){const p=snap(w.x,w.y);if(!cur)cur={p:[p],w:+document.getElementById('wsize').value};else cur.p.push(p);draw()}if(mode==='circuit'){circuits.push({n:document.getElementById('cnum').value,t:mode.t,x:w.x,y:w.y,s:+document.getElementById('csize').value});mode='pan';setActive(null);save();draw()}if(mode==='joint'){circuits.push({n:'JB',t:'joint',x:w.x,y:w.y,s:+document.getElementById('csize').value});mode='pan';setActive(null);save();draw()}}
 cv.onmousemove=e=>{const w=toWorld(e);if(drag==='pan'){px+=e.clientX-last.x;py+=e.clientY-last.y;last={x:e.clientX,y:e.clientY};draw()}else if(drag&&drag!=='pan'&&drag!=='white'){drag.x+=(e.clientX-last.x)/scale;drag.y+=(e.clientY-last.y)/scale;last={x:e.clientX,y:e.clientY};draw()}else if(drag==='white'){wcc.lineTo(w.x,w.y);wcc.stroke();draw()}}
 addEventListener('mouseup',()=>{if(drag==='white')save();if(drag&&drag!=='pan'&&drag!=='white')save();drag=null});
 cv.ondblclick=()=>{if(cur&&cur.p.length>1){wires.push(cur);save()}cur=null;draw()};
 cv.onwheel=e=>{e.preventDefault();const d=e.deltaY>0?0.9:1.1;const w=toWorld(e);scale*=d;px=w.x*scale*-1+e.clientX;py=w.y*scale*-1+e.clientY;draw()};
-document.getElementById('load').onclick=()=>document.getElementById('fi').click();document.getElementById('fi').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{bgc.fillStyle='#fff';bgc.fillRect(0,0,W,H);const s=Math.min(W/im.width,H/im.height)*0.95;bgc.drawImage(im,(W-im.width*s)/2,(H-im.height*s)/2,im.width*s,im.height*s);save();draw()};im.src=URL.createObjectURL(f);fi.value=''};
+document.getElementById('load').onclick=()=>document.getElementById('fi').click();document.getElementById('fi').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{bgc.fillStyle='#fff';bgc.fillRect(0,0,W,H);const s=Math.min(W/im.width,H/im.height)*0.95;bgc.filter='grayscale(1)';bgc.drawImage(im,(W-im.width*s)/2,(H-im.height*s)/2,im.width*s,im.height*s);bgc.filter='none';save();draw()};im.src=URL.createObjectURL(f);fi.value=''};
 document.getElementById('white').onclick=()=>{mode=mode==='white'?'pan':'white';document.getElementById('white').classList.toggle('active')};
 document.getElementById('wire').onclick=()=>{mode=mode==='wire'?'pan':'wire';document.getElementById('wire').classList.toggle('active');cur=null};
 document.getElementById('c100').onclick=()=>{mode='circuit';mode.t='100V';setActive('c100')};document.getElementById('c200').onclick=()=>{mode='circuit';mode.t='200V';setActive('c200')};document.getElementById('joint').onclick=()=>{mode='joint';setActive('joint')};
