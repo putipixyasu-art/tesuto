@@ -3,49 +3,83 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>電力申請 フルフォーム版</title>
+<title>電力申請 フォーム版（地図なし）</title>
 
 <style>
-body{margin:0;font-family:sans-serif;background:#f8fafc}
-.container{max-width:720px;margin:auto;padding:12px}
-h1{font-size:18px;margin-bottom:10px}
-.f{margin-bottom:12px}
-.f label{font-size:12px;font-weight:700;display:block;margin-bottom:4px}
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:#f3f4f6;
+}
+.container{
+  max-width:900px;
+  margin:auto;
+  background:#fff;
+  padding:16px;
+}
+h1{
+  font-size:18px;
+  margin-bottom:10px;
+}
+.f{
+  margin-bottom:10px;
+}
+.f label{
+  font-size:12px;
+  font-weight:700;
+  display:block;
+}
 .f input,.f select,.f textarea{
-  width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:14px;box-sizing:border-box
+  width:100%;
+  padding:8px;
+  border:1px solid #ccc;
+  border-radius:6px;
 }
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.chk{display:flex;flex-wrap:wrap;gap:6px}
-.chk label{
-  display:inline-flex;align-items:center;
-  padding:6px 10px;background:#eee;border-radius:20px;
-  cursor:pointer;font-size:12px
+.grid2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
 }
-.chk input{margin-right:4px}
-
 button{
-  width:100%;height:40px;border:none;border-radius:6px;
-  font-weight:700;margin-top:6px
+  height:36px;
+  border:none;
+  border-radius:6px;
+  background:#2563eb;
+  color:#fff;
 }
-.save{background:#2563eb;color:#fff}
-.load{background:#16a34a;color:#fff}
-.clear{background:#ef4444;color:#fff}
+.topbtns{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:6px;
+  margin-bottom:10px;
+}
 </style>
 </head>
 
 <body>
-<div class="container">
 
-<h1>電力申請（完全フォーム）</h1>
+<div class="container">
+<h1>電力申請 フォーム版</h1>
+
+<div class="topbtns">
+<button onclick="save()">保存</button>
+<button onclick="load()">読込</button>
+<button onclick="print()">印刷</button>
+<button onclick="clearAll()">全削除</button>
+</div>
 
 <div class="f"><label>現場名</label><input id="genba"></div>
 <div class="f"><label>会社名</label><input id="company"></div>
 <div class="f"><label>担当者</label><input id="tanto"></div>
 <div class="f"><label>住所</label><input id="jusho" value="宮城県"></div>
 
+<div class="grid2">
 <div class="f">
 <label>工事種別</label>
-<select id="koji"><option>本設</option><option>仮設</option></select>
+<select id="koji">
+<option>本設</option>
+<option>仮設</option>
+</select>
 </div>
 
 <div class="f">
@@ -55,6 +89,7 @@ button{
 <option selected>単相3線式 100/200V</option>
 <option>三相3線式 200V</option>
 </select>
+</div>
 </div>
 
 <div class="grid2">
@@ -71,11 +106,12 @@ button{
 <div class="f">
 <label>契約容量</label>
 <select id="amp">
-<option></option>
-<option>15A</option><option>20A</option><option>30A</option>
-<option>40A</option><option>50A</option><option>60A</option>
-<option>6kVA</option><option>8kVA</option><option>10kVA</option>
-<option>12kVA</option><option>15kVA</option>
+<option>30A</option>
+<option>40A</option>
+<option>50A</option>
+<option>60A</option>
+<option>6kVA</option>
+<option>10kVA</option>
 </select>
 </div>
 </div>
@@ -83,13 +119,14 @@ button{
 <div class="f">
 <label>引込線</label>
 <div class="grid2">
-<select id="dv"><option>DV2線</option><option selected>DV3線</option></select>
+<select id="dv">
+<option>DV2線</option>
+<option selected>DV3線</option>
+</select>
 <select id="sz">
 <option>3.2mm</option>
 <option>22mm²</option>
 <option>38mm²</option>
-<option>60mm²</option>
-<option>100mm²</option>
 </select>
 </div>
 <input id="dv_len" placeholder="長さ(m)">
@@ -100,108 +137,65 @@ button{
 <div class="f"><label>トランス柱番号</label><input id="trans_basho"></div>
 </div>
 
-<div class="grid2">
-<div class="f"><label>トランス1</label>
-<select id="trans1">
-<option></option><option>5kVA</option><option>10kVA</option>
-<option>15kVA</option><option>20kVA</option><option>30kVA</option>
-</select>
-</div>
-
-<div class="f"><label>トランス2</label>
-<select id="trans2">
-<option></option><option>5kVA</option><option>10kVA</option>
-<option>15kVA</option><option>20kVA</option><option>30kVA</option>
-</select>
-</div>
-</div>
-
-<div class="f">
-<label>区分</label>
-<div class="chk">
-<label><input type="checkbox" id="h1">2類</label>
-<label><input type="checkbox" id="h2">3類</label>
-<label><input type="checkbox" id="h3">空中分岐</label>
-</div>
-</div>
-
-<div class="f">
-<label>メーター</label>
-<select id="meter">
-<option>ベージュ</option>
-<option>グレー</option>
-<option>なし</option>
-</select>
-</div>
-
-<div class="f">
-<label>設備</label>
-<div class="chk">
-<label><input type="checkbox" id="e1">太陽光</label>
-<label><input type="checkbox" id="e2">エコキュート</label>
-<label><input type="checkbox" id="e3">IH</label>
-<label><input type="checkbox" id="e4">EV</label>
-<label><input type="checkbox" id="e5">蓄電池</label>
-<label><input type="checkbox" id="e6">オール電化</label>
-</div>
-</div>
-
-<div class="grid2">
-<div class="f"><label>受点予定</label><input type="date" id="juten"></div>
-<div class="f"><label>検査日</label><input type="date" id="kensa"></div>
-</div>
-
 <div class="f"><label>備考</label><textarea id="biko"></textarea></div>
-
-<button class="save" onclick="save()">保存</button>
-<button class="load" onclick="load()">読込</button>
-<button class="clear" onclick="clearData()">全削除</button>
 
 </div>
 
 <script>
+
 function getData(){
-  const ids=[
-    "genba","company","tanto","jusho","koji","kyokyu","keiyaku","amp",
-    "dv","sz","dv_len","hikikomi_basho","trans_basho","trans1","trans2",
-    "meter","juten","kensa","biko",
-    "h1","h2","h3","e1","e2","e3","e4","e5","e6"
-  ];
-  const d={}
-  ids.forEach(id=>{
-    const el=document.getElementById(id)
-    if(!el)return
-    d[id]=(el.type==="checkbox")?el.checked:el.value
-  })
-  return d
+  return {
+    genba:genba.value,
+    company:company.value,
+    tanto:tanto.value,
+    jusho:jusho.value,
+    koji:koji.value,
+    kyokyu:kyokyu.value,
+    keiyaku:keiyaku.value,
+    amp:amp.value,
+    dv:dv.value,
+    sz:sz.value,
+    dv_len:dv_len.value,
+    hikikomi_basho:hikikomi_basho.value,
+    trans_basho:trans_basho.value,
+    biko:biko.value
+  }
 }
 
 function setData(d){
   Object.keys(d).forEach(k=>{
-    const el=document.getElementById(k)
-    if(!el)return
-    if(el.type==="checkbox") el.checked=d[k]
-    else el.value=d[k]
+    if(window[k]) window[k].value=d[k]
   })
 }
 
 function save(){
-  localStorage.setItem("formData",JSON.stringify(getData()))
-  alert("保存しました")
+  const blob=new Blob([JSON.stringify(getData(),null,2)]);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download="申請.json";
+  a.click();
 }
 
 function load(){
-  const d=localStorage.getItem("formData")
-  if(!d)return alert("データなし")
-  setData(JSON.parse(d))
+  const i=document.createElement('input');
+  i.type='file';
+  i.onchange=e=>{
+    const f=e.target.files[0];
+    const r=new FileReader();
+    r.onload=ev=>{
+      setData(JSON.parse(ev.target.result))
+    }
+    r.readAsText(f)
+  }
+  i.click();
 }
 
-function clearData(){
-  if(confirm("削除する？")){
-    localStorage.removeItem("formData")
-    location.reload()
+function clearAll(){
+  if(confirm("全部消す？")){
+    document.querySelectorAll("input,textarea").forEach(e=>e.value="")
   }
 }
+
 </script>
 
 </body>
