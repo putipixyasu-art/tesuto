@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>電力申請 修正版</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<style>
+html,body,#map{
+ height:100%;
+ margin:0;
+ cursor:default !important;
+}
+
+.tools{
+ position:fixed;
+ bottom:10px;
+ left:50%;
+ transform:translateX(-50%);
+ background:#fff;
+ padding:6px;
+ border-radius:10px;
+ display:flex;
+ gap:5px;
+ z-index:9999;
+}
+.tools button.on{
+ background:#2563eb;
+ color:#fff;
+}
+
+.nameText{
+ font-size:24px;
+ font-weight:900;
+ color:#000;
+ background:none !important;
+}
+
+.comment{
+ color:#16a34a;
+ font-size:18px;
+ font-weight:900;
+}
+
+.blink{
+ animation:blink 0.6s infinite;
+}
+@keyframes blink{
+ 0%{opacity:1;}
+ 50%{opacity:0.2;}
+ 100%{opacity:1;}
+}
+</style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<div class="tools">
+<button data-t="pole">電柱</button>
+<button data-t="trans">トランス</button>
+<button data-t="point">接続点</button>
+<button data-t="line">低圧</button>
+<button data-t="hline">高圧</button>
+<button data-t="hikikomi">引込</button>
+<button data-t="name">名称</button>
+<button data-t="bld">建物</button>
+<button data-t="comment">コメント</button>
+<button id="save">保存</button>
+<button id="undo">戻る</button>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+
+const map = L.map('map',{zoomControl:false}).setView([38.26,140.87],16);
+L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png').addTo(map);
+L.control.zoom({position:'topright'}).addTo(map);
+
+const layer = L.layerGroup().addTo(map);
+
+let tool=null;
+let prevTool=null;
+let startNode=null;
+let nodes=[];
+let history=[];
+let lines=[];
+
+let activeRing=null;
+let nameNode=null;
+let isConnectingName=false;
+
+const pairMap=new Map();
+
+const COLORS={
+ line:'#000',
+ hline:'#7c3aed',
+ hikikomi:'#dc2626',
+ name:'orange'
+};
+
+// ===== ツール =====
+document.querySelectorAll('.tools button[data-t]').forEach(b=>{
+ b.onclick=()=>{
+  tool=b.dataset.t;
+  document.querySelectorAll('.tools button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+ }
+});
+
+// ===== ノード =====
+function createNode(latlng,type){
+
+ const node=L.circleMarker(latlng,{
+  radius:type==='point'?4:7,
+  weight:3,
+  color:type==='pole'?'#000':(type==='point'?'#ef4444':'red'),
+  fillColor:'#fff'
+ }).addTo(layer);
+
+ node.type=type;
+ nodes.push(node);
+
+ node.on('click',(e)=>{
+
+  L.DomEvent.stopPropagation(e);
+
+  if(tool==='pole'||tool==='trans'||tool==='point') return;
+  if(tool==='bld') return;
+
+  showRing(node);
+
+  if(isConnectingName && nameNode){
+    connect(nameNode,node,'name');
+    stopBlink(nameNode);
+
+    isConnectingName=false;
+    nameNode=null;
+
+    tool=prevTool;
+    clearRing();
+    return;
+  }
+
+  if(!isLine()) return;
+
+  if(!startNode){
+    startNode=node;
+  }else{
+    connect(startNode,node,tool);
+    startNode=null;
+    clearRing();
+  }
+
+ });
+
+ history.push({node});
+}
+
+// ===== リング =====
+function showRing(node){
+ if(activeRing) layer.removeLayer(activeRing);
+ activeRing=L.circleMarker(node.getLatLng(),{
+  radius:14,color:'blue'
+ }).addTo(layer);
+}
+function clearRing(){
+ if(activeRing){
+  layer.removeLayer(activeRing);
+  activeRing=null;
+ }
+}
+
+// ===== 接続 =====
+function getKey(a,b){
+ return a._leaflet_id < b._leaflet_id
+  ? a._leaflet_id+'_'+b._leaflet_id
+  : b._leaflet_id+'_'+a._leaflet_id;
+}
+
+function connect(a,b,type){
+
+ const key=getKey(a,b);
+ let count=pairMap.get(key)||0;
+ pairMap.set(key,count+1);
+
+ const p1=map.latLngToLayerPoint(a.getLatLng());
+ const p2=map.latLngToLayerPoint(b.getLatLng());
+
+ const dx=p2.x-p1.x;
+ const dy=p2.y-p1.y;
+ const len=Math.sqrt(dx*dx+dy*dy);
+ if(len===0) return;
+
+ const nx=-dy/len;
+ const ny=dx/len;
+
+ let offset=0;
+
+ if(count>0){
+  const side=(count%2===0?-1:1);
+  const level=Math.ceil(count/2);
+  offset=side*14*level;
+ }
+
+ const p1o=[p1.x+nx*offset,p1.y+ny*offset];
+ const p2o=[p2.x+nx*offset,p2.y+ny*offset];
+
+ const line=L.polyline([
+  map.layerPointToLatLng(p1o),
+  map.layerPointToLatLng(p2o)
+ ],{
+  color:COLORS[type],
+  weight:type==='name'?5:4
+ }).addTo(layer);
+
+ lines.push({
+  a:a.getLatLng(),
+  b:b.getLatLng(),
+  type
+ });
+
+ history.push({obj:line});
+}
+
+// ===== 名称 =====
+function createName(latlng,text){
+
+ const label=L.marker(latlng,{
+  interactive:false,
+  icon:L.divIcon({
+   className:'nameText',
+   html:text
+  })
+ }).addTo(layer);
+
+ label.text=text;
+
+ nodes.push(label);
+
+ label._blink=L.circleMarker(latlng,{
+  radius:16,
+  color:'blue',
+  className:'blink'
+ }).addTo(layer);
+
+ history.push({obj:label});
+ return label;
+}
+
+function stopBlink(n){
+ if(n._blink) layer.removeLayer(n._blink);
+}
+
+// ===== mapクリック =====
+map.on('click',e=>{
+
+ if(tool==='pole'||tool==='trans'||tool==='point'){
+  createNode(e.latlng,tool);
+  return;
+ }
+
+ if(tool==='name'){
+  const t=prompt('名称');
+  if(!t) return;
+
+  nameNode=createName(e.latlng,t);
+  isConnectingName=true;
+
+  prevTool=tool;
+  tool='__name_connect__';
+  return;
+ }
+
+ if(tool==='comment'){
+  const t=prompt('コメント');
+  if(t){
+   const m=L.marker(e.latlng,{
+    icon:L.divIcon({className:'comment',html:t})
+   }).addTo(layer);
+   history.push({obj:m});
+  }
+ }
+
+});
+
+// ===== 保存 =====
+document.getElementById('save').onclick=()=>{
+
+ const data={
+  nodes:nodes.map(n=>({
+    lat:n.getLatLng().lat,
+    lng:n.getLatLng().lng,
+    type:n.type||'name',
+    text:n.text||''
+  })),
+  lines
+ };
+
+ const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);
+ a.download='map.json';
+ a.click();
+};
+
+// ===== ★ フォーム連携（ここが正しい位置） =====
+window.addEventListener('message',e=>{
+
+ if(e.data.type==='GET_MAP_DATA'){
+
+   const data={
+     nodes:nodes.map(n=>({
+       lat:n.getLatLng().lat,
+       lng:n.getLatLng().lng,
+       type:n.type||'name',
+       text:n.text||''
+     })),
+     lines
+   };
+
+   e.source.postMessage({
+     type:'MAP_DATA',
+     data
+   }, '*');
+ }
+
+});
+
+</script>
+</body>
+</html>
